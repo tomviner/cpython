@@ -2884,6 +2884,8 @@ _check_for_legacy_statements(PySyntaxErrorObject *self, Py_ssize_t start)
      */
     static PyObject *print_prefix = NULL;
     static PyObject *exec_prefix = NULL;
+    static PyObject *pip_prefix = NULL;
+    static PyObject *pip3_prefix = NULL;
     Py_ssize_t text_len = PyUnicode_GET_LENGTH(self->text);
     int kind = PyUnicode_KIND(self->text);
     void *data = PyUnicode_DATA(self->text);
@@ -2926,6 +2928,34 @@ _check_for_legacy_statements(PySyntaxErrorObject *self, Py_ssize_t start)
                   PyUnicode_FromString("Missing parentheses in call to 'exec'"));
         return 1;
     }
+
+    /* Check for accidental pip usage */
+    if (pip_prefix == NULL) {
+        pip_prefix = PyUnicode_InternFromString("pip ");
+        if (pip_prefix == NULL) {
+            return -1;
+        }
+    }
+    if (PyUnicode_Tailmatch(self->text, pip_prefix,
+                            start, text_len, -1)) {
+        Py_XSETREF(self->msg,
+                  PyUnicode_FromString("'pip' is a command line tool. Exit python to use it."));
+        return 1;
+    }
+
+    if (pip3_prefix == NULL) {
+        pip3_prefix = PyUnicode_InternFromString("pip3 ");
+        if (pip3_prefix == NULL) {
+            return -1;
+        }
+    }
+    if (PyUnicode_Tailmatch(self->text, pip3_prefix,
+                            start, text_len, -1)) {
+        Py_XSETREF(self->msg,
+                  PyUnicode_FromString("'pip3' is a command line tool. Exit python to use it."));
+        return 1;
+    }
+
     /* Fall back to the default error message */
     return 0;
 }
